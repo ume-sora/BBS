@@ -3,8 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>掲示板</title>
-
+    <title>掲示板 コメントページ</title>
     <style>
 /*------------------------------
 
@@ -387,6 +386,8 @@ define( 'DB_NAME', 'BBS');
     $res = null;
     $option = null;
 
+    session_start();
+
     //DBに接続
     try {
         $option = array(
@@ -398,7 +399,25 @@ define( 'DB_NAME', 'BBS');
         // 接続エラーのときエラー内容を取得する
         $error_message[] = $e->getMessage();
     }
+    if( !empty($_GET['message_id']) ) {
 
+         // SQL作成
+  $stmt = $pdo->prepare("SELECT * FROM message WHERE id = :id");
+
+  // 値をセット
+  $stmt->bindValue( ':id', $_GET['message_id'], PDO::PARAM_INT);
+
+   // SQLクエリの実行
+   $stmt->execute();
+
+   // 表示するデータを取得
+  $message_data = $stmt->fetch();
+
+
+    }
+
+
+/*
     if (!empty($_POST['btn_submit'])) {
 
         // 空白除去
@@ -476,21 +495,19 @@ define( 'DB_NAME', 'BBS');
     if (empty($error_message)) {
 
         // メッセージのデータを取得する
-        $sql = "SELECT * FROM message ORDER BY post_date DESC";
+        $sql = "SELECT view_name,title_name,message,post_date FROM message ORDER BY post_date DESC";
         $message_array = $pdo->query($sql);
     }
+*/
 
     // データベースの接続を閉じる
-
+    $stmt = null;
     $pdo = null;
 
     ?>
 
-    <h1>掲示板</h1>
+    <h1>コメントページ</h1>
     <!-- メッセージの入力フォームを設置 -->
-    <?php if (!empty($success_message)): ?>
-        <p class="success_message"><?php echo $success_message; ?></p>
-    <?php endif; ?>
     <?php if (!empty($error_message)): ?>
         <ul class="error_message">
             <?php foreach ($error_message as $value): ?>
@@ -501,35 +518,26 @@ define( 'DB_NAME', 'BBS');
     <form method="POST" action="index.php">
         <div>
             <label for="view_name">表示名</label>
-            <input id="view_name" type="text" name="view_name" value="">
+            <input id="view_name" type="text" name="view_name" value="<?php if( 
+                !empty($message_data['view_name']) ){ echo $message_data['view_name']; 
+                } ?>">
         </div>
         <div>
             <label for="title_name">タイトル</label>
-            <input id="title_name" type="text" name="title_name" value="">
+            <input id="title_name" type="text" name="title_name" value="<?php if( 
+                !empty($message_data['title_name']) ){ echo $message_data['title_name']; 
+                } ?>">
         </div>
         <div>
             <label for="message">投稿内容</label>
-            <textarea id="message" name="message"></textarea>
+            <textarea id="message" name="message"><?php if( 
+                !empty($message_data['message']) ){ echo $message_data['message']; } ?>
+                </textarea>
         </div>
-        <input type="submit" name="btn_submit" value="投稿">
+        <input type="submit" name="btn_submit" value="コメントする">
+        <input type="hidden" name="message_id" value="<?php if( 
+    !empty($message_data['id']) ){ echo $message_data['id']; } ?>">
     </form>
-    <hr>
-    <section>
-        <!-- ここに投稿されたメッセージを表示 -->
-        <?php if (!empty($message_array)): ?>
-            <?php foreach ($message_array as $value): ?>
-                <article>
-                    <div class="info">
-                        <p><?php echo htmlspecialchars( $value['view_name'], ENT_QUOTES, 'UTF-8'); ?></p>
-                        <time><?php echo date('Y年m月d日 H:i', strtotime($value['post_date'])); ?></time>
-                        <p><a href="comment.php?message_id=<?php echo $value['id']; ?>">コメントする</a></p> 
-                    </div>
-                    <h1><?php echo htmlspecialchars( $value['title_name'], ENT_QUOTES, 'UTF-8'); ?></h1>
-                    <h6><?php echo nl2br(htmlspecialchars( $value['message'], ENT_QUOTES, 'UTF-8')); ?></h6>
-                </article>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </section>
+        <!-- ここに投稿されたメッセージを表示 -->     
 </body>
-
 </html>
