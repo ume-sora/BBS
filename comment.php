@@ -413,7 +413,7 @@ define( 'DB_NAME', 'BBS');
         $pdo = new PDO('mysql:charset=UTF8;dbname='.DB_NAME.';host='.DB_HOST , DB_USER, DB_PASS, $option);
     } catch (PDOException $e) {
         // 接続エラーのときエラー内容を取得する
-        $error_comment[] = $e->getMessage();
+        $error_message[] = $e->getMessage();
     }
 
     if( !empty($_GET['message_id']) ) {
@@ -467,11 +467,12 @@ define( 'DB_NAME', 'BBS');
     try{
 
     // SQL作成
-    $stmt = $pdo->prepare("INSERT INTO comments (c_view_name, comment, post_date) VALUES ( :c_view_name, :comment, :current_date)");
+    $stmt = $pdo->prepare("INSERT INTO comments (c_view_name, comment, message_id, post_date) VALUES ( :c_view_name, :comment, :message_id, :current_date)");
 
     // 値をセット
     $stmt->bindParam( ':c_view_name', $c_view_name, PDO::PARAM_STR);
     $stmt->bindParam( ':comment', $comment, PDO::PARAM_STR);
+    $stmt->bindParam( ':message_id', $_POST['message_id'], PDO::PARAM_STR);
     $stmt->bindParam( ':current_date', $current_date, PDO::PARAM_STR);
 
     // SQLクエリの実行
@@ -496,6 +497,8 @@ define( 'DB_NAME', 'BBS');
     $stmt = null;
     }
 }
+
+
 // データベースの接続を閉じる
 $pdo = null;
 
@@ -591,9 +594,13 @@ $pdo = null;
 <body>
     <h1>コメントページ</h1>
     <!-- メッセージの入力フォームを設置 -->
-    <?php if (!empty($error_comment)): ?>
-        <ul class="error_comment">
-            <?php foreach ($error_comment as $value): ?>
+    <?php if (!empty($success_message)) : ?>
+    <p class="success_message">
+        <?php echo htmlspecialchars($success_message, ENT_QUOTES, 'UTF-8'); ?></p>
+<?php endif; ?>
+    <?php if (!empty($error_message)): ?>
+        <ul class="error_message">
+            <?php foreach ($error_message as $value): ?>
                 <li>・<?php echo $value; ?></li>
             <?php endforeach; ?>
         </ul>

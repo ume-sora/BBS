@@ -380,6 +380,7 @@ define( 'DB_NAME', 'BBS');
     $current_date = null;
     $message = array();
     $message_array = array();
+    $comment_array = array();
     $success_message = null;
     $error_message = array();
     $pdo = null;
@@ -407,7 +408,7 @@ define( 'DB_NAME', 'BBS');
         $message = preg_replace('/\A[\p{C}\p{Z}]++|[\p{C}\p{Z}]++\z/u', '', $_POST['message']);
 
         // 表示名の入力チェック
-        if (empty('view_name')) {
+        if (empty($view_name)) {
             $error_message[] = '表示名を入力してください。';
         } else {
             $clean['view_name'] = htmlspecialchars($_POST['view_name'], ENT_QUOTES, 'UTF-8');
@@ -415,7 +416,7 @@ define( 'DB_NAME', 'BBS');
         }
 
         // タイトルの入力チェック
-        if (empty('title_name')) {
+        if (empty($title_name)) {
             $error_message[] = 'タイトルを入力してください。';
         } else {
             $clean['title_name'] = htmlspecialchars($_POST['title_name'], ENT_QUOTES, 'UTF-8');
@@ -423,7 +424,7 @@ define( 'DB_NAME', 'BBS');
         }
 
         // メッセージの入力チェック
-        if (empty('message')) {
+        if (empty($message)) {
             $error_message[] = '本文を入力してください。';
         } else {
             $clean['message'] = htmlspecialchars($_POST['message'], ENT_QUOTES, 'UTF-8');
@@ -478,6 +479,10 @@ define( 'DB_NAME', 'BBS');
         // メッセージのデータを取得する
         $sql = "SELECT * FROM message ORDER BY post_date DESC";
         $message_array = $pdo->query($sql);
+    
+    //コメントのデータを取得する
+    $c_sql = "SELECT * FROM comments ORDER BY post_date DESC";
+  $comment_array = $pdo->query($c_sql);
     }
 
     // データベースの接続を閉じる
@@ -519,16 +524,28 @@ define( 'DB_NAME', 'BBS');
         <?php if (!empty($message_array)): ?>
             <?php foreach ($message_array as $value): ?>
                 <article>
-                    <div class="info">
+                <div class="info">
                         <p><?php echo htmlspecialchars( $value['view_name'], ENT_QUOTES, 'UTF-8'); ?></p>
                         <time><?php echo date('Y年m月d日 H:i', strtotime($value['post_date'])); ?></time>
-                        <p><a href="comment.php?message_id=<?php echo $value['id']; ?>">コメントする</a></p> 
+                        <p><a href="comment.php?message_id=<?php echo $value['id']; ?>">コメントする</a></p>
                     </div>
                     <h1><?php echo htmlspecialchars( $value['title_name'], ENT_QUOTES, 'UTF-8'); ?></h1>
-                    <h6><?php echo nl2br(htmlspecialchars( $value['message'], ENT_QUOTES, 'UTF-8')); ?></h6>
+                    <h2><?php echo nl2br(htmlspecialchars( $value['message'], ENT_QUOTES, 'UTF-8')); ?></h2>
                 </article>
+           
+            <?php foreach ($comment_array as $c_value): ?>
+                <?php if ($c_value['message_id'] == $value['id']): ?>
+                <article class = "reply">
+                    <div class="info">
+                        <p><?php echo htmlspecialchars( $c_value['c_view_name'], ENT_QUOTES, 'UTF-8'); ?></p>
+                        <time><?php echo date('Y年m月d日 H:i', strtotime($c_value['post_date'])); ?></time>
+                    </div>
+                    <h2><?php echo nl2br(htmlspecialchars( $c_value['comment'], ENT_QUOTES, 'UTF-8')); ?></h2>
+                </article>
+                <?php endif; ?>
             <?php endforeach; ?>
-        <?php endif; ?>
+            <?php endforeach; ?>
+            <?php endif; ?>
     </section>
 </body>
 
