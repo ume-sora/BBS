@@ -281,6 +281,21 @@ Common Style
             line-height: 1.6em;
         }
 
+        .btn_return {
+  display: inline-block;
+  margin-right: 10px;
+  padding: 10px 20px;
+  color: #555;
+  font-size: 86%;
+  border-radius: 5px;
+  border: 1px solid #999;
+}
+.btn_return:hover {
+  color: #999;
+  border-color: #999;
+  text-decoration: none;
+}
+
 
 /*-----------------------------------
 掲示板エリア
@@ -354,9 +369,8 @@ Common Style
     </style>
 </head>
 
-<body>
-
-    <?php
+<?php
+session_start();
 
     // データベースの接続情報
 define( 'DB_HOST', 'localhost');
@@ -379,6 +393,8 @@ define( 'DB_NAME', 'BBS');
     $current_date = null;
     $message = array();
     $message_array = array();
+    $comment = array();
+    $comment_array = array();
     $success_message = null;
     $error_message = array();
     $pdo = null;
@@ -386,7 +402,7 @@ define( 'DB_NAME', 'BBS');
     $res = null;
     $option = null;
 
-    session_start();
+    
 
     //DBに接続
     try {
@@ -397,8 +413,9 @@ define( 'DB_NAME', 'BBS');
         $pdo = new PDO('mysql:charset=UTF8;dbname='.DB_NAME.';host='.DB_HOST , DB_USER, DB_PASS, $option);
     } catch (PDOException $e) {
         // 接続エラーのときエラー内容を取得する
-        $error_message[] = $e->getMessage();
+        $error_comment[] = $e->getMessage();
     }
+
     if( !empty($_GET['message_id']) ) {
 
          // SQL作成
@@ -412,10 +429,75 @@ define( 'DB_NAME', 'BBS');
 
    // 表示するデータを取得
   $message_data = $stmt->fetch();
+  $comment_data = $stmt->fetch();
 
-
+    
     }
 
+    if (!empty($_POST['btn_submit'])) {
+
+        // 空白除去
+        $c_view_name = preg_replace('/\A[\p{C}\p{Z}]++|[\p{C}\p{Z}]++\z/u', '', $_POST['c_view_name']);
+        $comment = preg_replace('/\A[\p{C}\p{Z}]++|[\p{C}\p{Z}]++\z/u', '', $_POST['comment']);
+
+        // 表示名の入力チェック
+        if (empty($c_view_name)) {
+            $error_message[] = '表示名を入力してください。';
+        } else {
+            $clean['c_view_name'] = htmlspecialchars($_POST['c_view_name'], ENT_QUOTES, 'UTF-8');
+            $clean['c_view_name'] = preg_replace('/\\r\\n|\\n|\\r/', '', $clean['c_view_name']);
+        }
+
+        // メッセージの入力チェック
+        if (empty($comment)) {
+            $error_message[] = 'コメント内容を入力してください。';
+        } else {
+            $clean['comment'] = htmlspecialchars($_POST['comment'], ENT_QUOTES, 'UTF-8');
+            $clean['comment'] = preg_replace('/\\r\\n|\\n|\\r/', '<br>', $clean['comment']);
+        }
+
+        if (empty($error_message)) {
+
+    // 書き込み日時を取得
+    $current_date = date("Y-m-d H:i:s");
+
+    // トランザクション開始
+    $pdo->beginTransaction();
+
+    try{
+
+    // SQL作成
+    $stmt = $pdo->prepare("INSERT INTO comments (c_view_name, comment, post_date) VALUES ( :c_view_name, :comment, :current_date)");
+
+    // 値をセット
+    $stmt->bindParam( ':c_view_name', $c_view_name, PDO::PARAM_STR);
+    $stmt->bindParam( ':comment', $comment, PDO::PARAM_STR);
+    $stmt->bindParam( ':current_date', $current_date, PDO::PARAM_STR);
+
+    // SQLクエリの実行
+    $res = $stmt->execute();
+
+    // コミット
+    $res = $pdo->commit();
+
+} catch(Exception $e) {
+
+    // エラーが発生した時はロールバック
+    $pdo->rollBack();
+  }
+
+    if( $res ) {
+        $success_message = 'コメントを書き込みました。';
+      } else {
+        $error_message[] = 'コメントに失敗しました。';
+      }
+
+       // プリペアドステートメントを削除
+    $stmt = null;
+    }
+}
+// データベースの接続を閉じる
+$pdo = null;
 
 /*
     if (!empty($_POST['btn_submit'])) {
@@ -506,18 +588,19 @@ define( 'DB_NAME', 'BBS');
 
     ?>
 
+<body>
     <h1>コメントページ</h1>
     <!-- メッセージの入力フォームを設置 -->
-    <?php if (!empty($error_message)): ?>
-        <ul class="error_message">
-            <?php foreach ($error_message as $value): ?>
+    <?php if (!empty($error_comment)): ?>
+        <ul class="error_comment">
+            <?php foreach ($error_comment as $value): ?>
                 <li>・<?php echo $value; ?></li>
             <?php endforeach; ?>
         </ul>
     <?php endif; ?>
-    <form method="POST" action="index.php">
+    <form method="post">
         <div>
-            <label for="view_name">表示名</label>
+            <label for="view_name">ユーザー名</label>
             <input id="view_name" type="text" name="view_name" value="<?php if( 
                 !empty($message_data['view_name']) ){ echo $message_data['view_name']; 
                 } ?>">
@@ -534,7 +617,18 @@ define( 'DB_NAME', 'BBS');
                 !empty($message_data['message']) ){ echo $message_data['message']; } ?>
                 </textarea>
         </div>
+        <div>
+            <label for="c_view_name">表示名</label>
+            <input id="c_view_name" type="text" name="c_view_name" value="">
+        </div>
+        <div>
+            <label for="comment">コメント内容</label>
+            <textarea id="comment" name="comment"></textarea>
+        </div>
+
+        <a class="btn_return" href="index.php">戻る</a>
         <input type="submit" name="btn_submit" value="コメントする">
+
         <input type="hidden" name="message_id" value="<?php if( 
     !empty($message_data['id']) ){ echo $message_data['id']; } ?>">
     </form>
